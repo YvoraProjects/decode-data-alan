@@ -1,0 +1,24 @@
+{
+  "name": "decode-data",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon src/index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "abi-decoder": "^2.4.0",
+    "body-parser": "^1.19.2",
+    "cors": "^2.8.5",
+    "ethers": "^5.5.4",
+    "express": "^4.17.2",
+    "morgan": "^1.10.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.15"
+  }
+}
