@@ -24,7 +24,7 @@ app.post('/txs', cors(), async function (req, res) {
 
   let abi = req.body.abi ? new ethers.utils.Interface(req.body.abi) : pcsAbi;
   let results = [];
-  abiDecoder.addABI(req.body.abi ? req.body.abi : require("./test-abi.json"));
+  abiDecoder.addABI(req.body.abi ? JSON.parse(req.body.abi) : require("./test-abi.json"));
 
   if (!req.body.hashes) {
     res.send(JSON.stringify(results));
@@ -44,31 +44,39 @@ app.post('/txs', cors(), async function (req, res) {
               value: tx.value,
             });
           } catch (error) {
-            console.log(error);
+            // console.log(error);
             try {
               decodedInput = pcsAbi.parseTransaction({
                 data: tx.data,
                 value: tx.value,
               });
-            } catch (error) { console.log(error); }
+            } catch (error) {
+              //console.log(error);
+            }
           }
 
           const decodedLogsArray = [];
-          await provider.getTransactionReceipt(hash).then(async (tx) => {
-            const decodedLogs = abiDecoder.decodeLogs(tx.logs);
+          await provider.getTransactionReceipt(hash)
+            .then(async (tx) => {
 
-            for (let log of decodedLogs) {
-              const newLog = Object.assign({}, log);
-              const eventArray = [];
+              try {
+                const decodedLogs = abiDecoder.decodeLogs(tx.logs);
 
-              for (let event of log.events) {
-                eventArray.push(event);
+                for (let log of decodedLogs) {
+                  const newLog = Object.assign({}, log);
+                  const eventArray = [];
+
+                  for (let event of log.events) {
+                    eventArray.push(event);
+                  }
+
+                  newLog.events = eventArray;
+                  decodedLogsArray.push(newLog);
+                }
+              } catch (error) {
+                // console.log(error);
               }
-
-              newLog.events = eventArray;
-              decodedLogsArray.push(newLog);
-            }
-          });
+            });
 
           results.push({ decodedInput, decodedLogsArray });
         }
