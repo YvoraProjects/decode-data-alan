@@ -15,11 +15,12 @@ app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
 app.post('/txs', cors(), async function (req, res) {
   res.contentType('application/json');
+  let results = [];
+  let errorTransaction = null;
 
   provider = new ethers.providers.WebSocketProvider('ws://localhost:8546');
   wallet = new ethers.Wallet('0xf0e72b4e27ea3f7542c8d1c3b1420865b7066f1767e20181fa513b47c625d1c0');
   account = wallet.connect(provider);
-  let results = [];
 
   console.log(`---------------------------------------`);
   console.log(`New petition ${new Date().toISOString()}`);
@@ -76,6 +77,7 @@ app.post('/txs', cors(), async function (req, res) {
           try {
             if (tx.logs && tx.logs.length > 0) {
               for (let log of tx.logs) {
+                errorTransaction = tx.transactionHash;
                 const _log = abi.parseLog(log);
                 decodedLogsArray.push(_log);
               }
@@ -95,7 +97,25 @@ app.post('/txs', cors(), async function (req, res) {
   console.log(`Execution time ${((endTime - startTime) / 1000).toFixed(2)} sec.`);
   console.log(`---------------------------------------`);
 
-  res.send(JSON.stringify(results));
+  try {
+    res.send(JSON.stringify(results));
+  } catch (error) {
+    console.log('Error tx', errorTransaction);
+
+  } finally {
+    if (errorTransaction) {
+
+      respuesta = {
+        error: true,
+        codigo: 700,
+        mensaje: `${errorTransaction}`
+      };
+
+      console.log(results.length);
+      errorTransaction = null;
+      res.send(respuesta);
+    }
+  }
 });
 
 app.listen(app.get('port'), () => {
