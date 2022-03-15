@@ -74,20 +74,10 @@ app.post('/txs', cors(), async function (req, res) {
         const decodedLogsArray = [];
         await provider.getTransactionReceipt(hash).then(async (tx) => {
           try {
-            const decodedLogs = abiDecoder.decodeLogs(tx.logs);
-            if (decodedLogs && decodedLogs.length > 0) {
-              for (let log of decodedLogs) {
-                const newLog = Object.assign({}, log);
-                const eventArray = [];
-
-                if (log && log.events && log.events.length > 0) {
-                  for (let event of log.events) {
-                    eventArray.push(event);
-                  }
-                }
-
-                newLog.events = eventArray;
-                decodedLogsArray.push(newLog);
+            if (tx.logs && tx.logs.length > 0) {
+              for (let log of tx.logs) {
+                const _log = abi.parseLog(log);
+                decodedLogsArray.push(_log);
               }
             }
           } catch (error) {
