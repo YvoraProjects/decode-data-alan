@@ -25,11 +25,11 @@ app.post('/txs', cors(), async function (req, res) {
   console.log(`---------------------------------------`);
   console.log(`New petition ${new Date().toISOString()}`);
 
-  if (!req.body.apikey || !req.body.address || !req.body.hashes || req.body.hashes.length <= 0) {
+  if (!req.body.hashes || req.body.hashes.length <= 0) {
     respuesta = {
       error: true,
       codigo: 501,
-      mensaje: 'Algún dato vacío (Hash, Address, ApiKey)'
+      mensaje: 'Hashes vacíos!'
     };
 
     res.send(respuesta);
@@ -39,19 +39,25 @@ app.post('/txs', cors(), async function (req, res) {
 
   const apikey = req.body.apikey;
   const address = req.body.address;
-  const abiResponse = await fetch(`https://api.bscscan.com/api?module=contract&action=getabi&address=${address}&apikey=${apikey}`);
-  const data = await abiResponse.json();
-  const abi = data?.result ? new ethers.utils.Interface(data.result) : pcsAbi;
 
-  try {
-    abiDecoder.addABI(data?.result ? JSON.parse(data.result) : require("./test-abi.json"));
-  } catch (error) {
-    console.log(error);
+  let abi;
+
+  if (apikey && address) {
+    const abiResponse = await fetch(`https://api.bscscan.com/api?module=contract&action=getabi&address=${address}&apikey=${apikey}`);
+    const data = await abiResponse.json();
+    abi = data?.result ? new ethers.utils.Interface(data.result) : pcsAbi;
+
+    try {
+      abiDecoder.addABI(data?.result ? JSON.parse(data.result) : require("./test-abi.json"));
+    } catch (error) {
+      console.log(error);
+    }
+
+    console.log(`ApiKey: ${req.body.apikey}`);
+    console.log(`Address: ${req.body.address}`);
   }
 
   console.log(`Hashes: ${req.body.hashes.length}`);
-  console.log(`ApiKey: ${req.body.apikey}`);
-  console.log(`Address: ${req.body.address}`);
   console.log(`---------------------------------------`);
 
   var startTime = performance.now()
@@ -102,7 +108,6 @@ app.post('/txs', cors(), async function (req, res) {
   } catch (error) {
     console.log('Error tx', errorTransaction);
 
-  } finally {
     if (errorTransaction) {
 
       respuesta = {
@@ -112,9 +117,11 @@ app.post('/txs', cors(), async function (req, res) {
       };
 
       console.log(results.length);
-      errorTransaction = null;
       res.send(respuesta);
     }
+
+  } finally {
+    errorTransaction = null;
   }
 });
 
