@@ -7,11 +7,89 @@ const pcsAbi = new ethers.utils.Interface(require("./abi.json"));
 const bodyParser = require("body-parser");
 const abiDecoder = require('abi-decoder');
 
+const swapETHForExactTokens = new RegExp("^0xfb3bdb41");
+const swapExactETHForTokens = new RegExp("^0x7ff36ab5");
+const swapExactTokensForETH = new RegExp("^0x18cbafe5");
+const swapExactTokensForTokens = new RegExp("^0x38ed1739");
+const swapExactTokensForTokensSupportingFeeOnTransferTokens = new RegExp("^0x5c11d795");
+const swapExactETHForTokensSupportingFeeOnTransferTokens = new RegExp("^0xb6f9de95");
+const swapTokensForExactTokens = new RegExp("^0x8803dbee");
+const buy = new RegExp("^0xa6f2ae3a");
+
 app.set('port', process.env.PORT || 3001);
 app.set('json spaces', 2);
 
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
+
+app.post('/check-buysell', cors(), async function (req, res) {
+  res.contentType('application/json');
+  let results = [];
+  let errorTransaction = null;
+
+  const WBNB_CONTRACT = ethers.utils.getAddress('0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c');
+  const USDT_CONTRACT = ethers.utils.getAddress('0x55d398326f99059fF775485246999027B3197955');
+  const BUSD_CONTRACT = ethers.utils.getAddress('0xe9e7cea3dedca5984780bafc599bd69add087d56');
+
+  provider = new ethers.providers.WebSocketProvider('ws://localhost:8546');
+  wallet = new ethers.Wallet('0xf0e72b4e27ea3f7542c8d1c3b1420865b7066f1767e20181fa513b47c625d1c0');
+  account = wallet.connect(provider);
+
+  console.log(`---------------------------------------`);
+  console.log(`New petition ${new Date().toISOString()}`);
+
+  if (!req.body.hashes || req.body.hashes.length <= 0 || !req.body.address) {
+    respuesta = {
+      error: true,
+      codigo: 501,
+      mensaje: 'Hashes vacíos!'
+    };
+
+    res.send(respuesta);
+    console.log(`Algun dato vacío`);
+    console.log(`---------------------------------------`);
+  }
+
+  const address = ethers.utils.getAddress(req.body.address);
+
+  for (let hash of req.body.hashes) {
+    await provider.getTransaction(hash).then(async (tx) => {
+      if (tx && tx.to) {
+        try {
+          if (isBuyMethod(tx)) {
+            const decodedData = pcsAbi.parseTransaction({ data: tx.data, value: tx.value });
+            const indexAddress = (decodedData.args['path']).findIndex(add => add === address);
+
+            const walletObject = { address: tx.from, sell: false, buy: false };
+            const exists = results.find(wallet => wallet.address === tx.from);
+            const walletIndex = results.findIndex(wallet => wallet.address === tx.from);
+
+            if (indexAddress === 0) { // Es una venta
+              if (exists) {
+                exists.sell = true;
+                results[walletIndex] = exists;
+              } else {
+                results.push({ ...walletObject, sell: true });
+              }
+            } else { // Es una compra u otra cosa
+              if (exists) {
+                exists.buy = true;
+                results[walletIndex] = exists;
+              } else {
+                results.push({ ...walletObject, buy: true });
+              }
+            }
+
+          }
+        } catch (error) {
+          console.log(error);
+        }
+      }
+    })
+  }
+
+  res.send(JSON.stringify(results));
+});
 
 app.post('/txs', cors(), async function (req, res) {
   res.contentType('application/json');
@@ -128,3 +206,11 @@ app.post('/txs', cors(), async function (req, res) {
 app.listen(app.get('port'), () => {
   console.log(`Server listening on port ${app.get('port')}`);
 });
+
+
+function isBuyMethod(tx) {
+  return swapETHForExactTokens.test(tx.data) || swapExactETHForTokens.test(tx.data) ||
+    swapExactTokensForETH.test(tx.data) || swapExactTokensForTokens.test(tx.data) ||
+    swapExactTokensForTokensSupportingFeeOnTransferTokens.test(tx.data) || swapTokensForExactTokens.test(tx.data) ||
+    swapExactETHForTokensSupportingFeeOnTransferTokens.test(tx.data) || buy.test(tx.data);
+}
