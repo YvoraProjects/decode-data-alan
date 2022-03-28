@@ -204,50 +204,6 @@ app.post('/txs', cors(), async function (req, res) {
   }
 });
 
-app.post('/binance', cors(), async function (req, res) {
-  res.contentType('application/json');
-  let results = [];
-
-  console.log(`---------------------------------------`);
-  console.log(`New petition ${new Date().toISOString()}`);
-
-  if ((!req.body.proxies || req.body.proxies.length <= 0) || !req.body.tokens || req.body.tokens.length <= 0) {
-    respuesta = {
-      error: true,
-      codigo: 501,
-      mensaje: 'Proxies / Tokens vacíos!!'
-    };
-
-    res.send(respuesta);
-    console.log(`Algun dato vacío`);
-    console.log(`---------------------------------------`);
-  }
-
-  var startTime = performance.now();
-
-  const promisePool = [];
-  for (let i = 0; i < req.body.tokens.length; i++) {
-    const random = Math.floor(Math.random() * (req.body.proxies.length - 1)) + 1;
-    const proxyAgent = new HttpsProxyAgent(`http://${req.body.proxies[random]}`);
-    promisePool.push(
-      fetch(`https://www.binance.com/bapi/capital/v2/public/capital/config/getOne?coin=${req.body.tokens[i]}&lang=en`, { agent: proxyAgent })
-        .then((res) => res.json())
-        .catch((error) => console.log(error))
-    );
-  }
-
-  Promise.all(promisePool)
-    .then((res) => {
-      console.log(`Call to promisePool took ${(performance.now() - startTime) / 1000.0} seconds`);
-      res.filter(x => x.data != null)
-        .map((x, index) =>
-          results.push({ token: req.body.tokens[index], hasData: x.data != null && x.data.length > 0, info: x })
-        );
-    }, (error) => {
-      console.log(error);
-    }).finally(() => res.send(JSON.stringify(results)));
-});
-
 app.listen(app.get('port'), () => {
   console.log(`Server listening on port ${app.get('port')}`);
 });
