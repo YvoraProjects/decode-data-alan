@@ -227,7 +227,7 @@ app.post('/binance', cors(), async function (req, res) {
 
   const promisePool = [];
   for (let i = 0; i < req.body.tokens.length; i++) {
-    const random = Math.floor(Math.random() * 99) + 1;
+    const random = Math.floor(Math.random() * (req.body.proxies.length - 1)) + 1;
     const proxyAgent = new HttpsProxyAgent(`http://${req.body.proxies[random]}`);
     promisePool.push(
       fetch(`https://www.binance.com/bapi/capital/v2/public/capital/config/getOne?coin=${req.body.tokens[i]}&lang=en`, { agent: proxyAgent })
