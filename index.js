@@ -239,7 +239,10 @@ app.post('/binance', cors(), async function (req, res) {
   Promise.all(promisePool)
     .then((res) => {
       console.log(`Call to promisePool took ${(performance.now() - startTime) / 1000.0} seconds`);
-      res.map((x, index) => results.push({ token: req.body.tokens[index], hasData: x.data != null && x.data.length > 0, info: x }));
+      res.filter(x => x.data != null)
+        .map((x, index) =>
+          results.push({ token: req.body.tokens[index], hasData: x.data != null && x.data.length > 0, info: x })
+        );
     }, (error) => {
       console.log(error);
     }).finally(() => res.send(JSON.stringify(results)));
